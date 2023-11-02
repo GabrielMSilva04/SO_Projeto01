@@ -17,22 +17,51 @@ print_array() {
     done
 }
 
+if [[ "$opts" == *"-r "* ]]; then
+  sort_cmd="sort -n"
+fi
+
+if [[ "$opts" == *"-a "* ]]; then
+  sort_cmd="sort"
+fi
+
+if [[ "$opts" == *"-ra "* ]]; then
+  sort_cmd="sort -r"
+fi
+
 echo "SIZE    NAME $(date +%Y%m%d) $*"
 
 # Verificar opções de seleção de ficheiros
-if [[ "$opts" == *"-n "* ]]; then #n = numerical
+if [[ "$opts" == *"-n "* ]]; then #n = filtrar nome
   name_pattern=$(echo "$opts" | sed -n 's/.*-n \([^ ]*\).*/\1/p')
   find_opts="$find_opts -name $name_pattern"
 
-  #echo "name pattern = $name_pattern"
-  if [[ "$opts" == *"-r "* ]]; then
-    sort_cmd="sort -n"
+  # Find directories containing files with a specific name pattern (e.g., .txt extension)
+  mapfile -t directories < <(find "$dir" -type f -name "*$name_pattern" -exec dirname {} \; | sort -u)
+  mapfile -t array < <(du "${directories[@]}")
+
+  if [[ "$opts" == *"-l "* ]]; then
+    nlines=$(echo "$opts" | sed -n 's/.*-l \([^ ]*\).*/\1/p')
+  else
+    nlines=${#array[@]}
   fi
 
-  if [[ "$opts" == *"-a "* ]]; then
-    sort_cmd="sort"
-  fi
+  print_array array 0 "$nlines"
 
+elif [[ "$opts" == *"-d "* ]]; then
+  date_limit=$(echo "$opts" | sed -n 's/.*-d \([^ ]*\).*/\1/p')
+  find_opts="$find_opts -newermt $date_limit"
+
+  # Execute the du command and store its output into an array
+  mapfile -t array < <(du --time "$dir")
+
+  print_array array 0 "$nlines"
+
+elif [[ "$opts" == *"-s "* ]]; then
+  size_limit=$(echo "$opts" | sed -n 's/.*-s \([^ ]*\).*/\1/p')
+  find_opts="$find_opts -size +${size_limit}c"
+
+else
   # Execute the du command and store its output into an array
   mapfile -t array < <(du "$dir" | $sort_cmd)
 
@@ -44,26 +73,5 @@ if [[ "$opts" == *"-n "* ]]; then #n = numerical
 
   print_array array 0 "$nlines"
 fi
-  
-if [[ "$opts" == *"-d "* ]]; then
-  date_limit=$(echo "$opts" | sed -n 's/.*-d \([^ ]*\).*/\1/p')
-  find_opts="$find_opts -newermt $date_limit"
 
-  # Execute the du command and store its output into an array
-  mapfile -t array < <(du --time "$dir")
-
-  # Display the array elements (for demonstration)
-  for line in "${array[@]}"; do
-    echo "$line"
-  done
-
-  echo "primeira linha:"
-  echo "${array[0]}"
-fi
-  
-if [[ "$opts" == *"-s "* ]]; then
-  size_limit=$(echo "$opts" | sed -n 's/.*-s \([^ ]*\).*/\1/p')
-  find_opts="$find_opts -size +${size_limit}c"
-fi
-
-#(du "$var" | sort -n -r | cut -d '%' -f1) | grep $2)
+#(du "$dir" | sort -n -r | grep "objects")
