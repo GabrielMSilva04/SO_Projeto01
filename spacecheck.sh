@@ -10,22 +10,49 @@ opts="$@"
 find_opts=""
 sort_cmd="sort -nr"
 
-echo "$opts"
-echo "$dir"
+#echo "$opts"
+#echo "$dir"
+echo "SIZE    NAME $(date +%Y%m%d) $*"
 # Verificar opções de seleção de ficheiros
-if [[ "$opts" == *"-n "* ]]; then
+if [[ "$opts" == *"-n "* ]]; then #n = numerical
   name_pattern=$(echo "$opts" | sed -n 's/.*-n \([^ ]*\).*/\1/p')
   find_opts="$find_opts -name $name_pattern"
 
-  echo "name"
-  echo "$name_pattern"
+  #echo "name pattern = $name_pattern"
+  if [[ "$opts" == *"-r "* ]]; then
+    sort_cmd="sort -n"
+  fi
+
+  if [[ "$opts" == *"-a "* ]]; then
+    sort_cmd="sort"
+  fi
+
+  # Execute the du command and store its output into an array
+  mapfile -t array < <(du "$dir" | $sort_cmd)
+
+  # Display the array elements (for demonstration)
+  for line in "${array[@]}"; do
+    echo "$line"
+  done
 fi
   
 if [[ "$opts" == *"-d "* ]]; then
   date_limit=$(echo "$opts" | sed -n 's/.*-d \([^ ]*\).*/\1/p')
   find_opts="$find_opts -newermt $date_limit"
 
-  echo "$date_limit"
+
+  # Execute the du command and store its output into an array
+  mapfile -t array < <(du --time "$dir")
+
+  # Display the array elements (for demonstration)
+  for line in "${array[@]}"; do
+    echo "$line"
+  done
+
+  echo "primeira linha:"
+  echo "${array[0]}"
+
+  #echo "$date_limit"
 fi
   
 if [[ "$opts" == *"-s "* ]]; then
@@ -40,9 +67,9 @@ for i in "$@"; do
   ((count++))  # Increment the counter
 
   if [ "$i" == "-n" ] ; then
+    echo "numerical"
     nextIndex=$((count + 1))  # Calculate the index of the next argument
     if [ $count != 1 ] ; then
-      
       case $1 in
         "-a")
             Message="Alfabeticamente"
@@ -50,7 +77,6 @@ for i in "$@"; do
         "-r")
             Message="Reverso"
             ;;
-        
       esac
 
       echo "$Message"
@@ -62,31 +88,7 @@ for i in "$@"; do
         echo "No value found after -n" >&2
         exit 1  # Exit with an error if there's no value after -n
     fi
-  else 
-    echo "Falso" 
   fi 
 done
 
-echo "The value after -n is: $var"
-
-echo "SIZE    NAME $(date +%Y%m%d) $*"
-(du "$var" | sort -n -r | cut -d '%' -f1) #| grep $2)
-
-
-
-
-# Function to reverse an array
-reverse_array() {
-    local -n arr=$1  # Create a reference to the input array
-    local arrayLength=${#arr[@]}  # Get the length of the array
-
-    local reversedArray=()  # Declare an array to store the reversed elements
-
-    # Iterate through the original array in reverse order and populate the reversed array
-    for ((i = arrayLength - 1; i >= 0; i--)); do
-        reversedArray+=("${arr[i]}")
-    done
-
-    # Update the original array with the reversed elements
-    arr=("${reversedArray[@]}")
-}
+#(du "$var" | sort -n -r | cut -d '%' -f1) | grep $2)
