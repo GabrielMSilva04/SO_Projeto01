@@ -31,12 +31,11 @@ fi
 
 echo "SIZE    NAME $(date +%Y%m%d) $*"
 
-# Verificar opções de seleção de ficheiros
-if [[ "$opts" == *"-n "* ]]; then #n = filtrar nome
+if [[ "$opts" == *"-n "* ]]; then # n = filtrar nome
   name_pattern=$(echo "$opts" | sed -n 's/.*-n \([^ ]*\).*/\1/p')
   find_opts="$find_opts -name $name_pattern"
 
-  # Find directories containing files with a specific name pattern (e.g., .txt extension)
+  # Find directories containing files with a specific name pattern
   mapfile -t directories < <(find "$dir" -type f -name "*$name_pattern" -exec dirname {} \; | sort -u)
   mapfile -t array < <(du "${directories[@]}")
 
@@ -48,18 +47,40 @@ if [[ "$opts" == *"-n "* ]]; then #n = filtrar nome
 
   print_array array 0 "$nlines"
 
-elif [[ "$opts" == *"-d "* ]]; then
-  date_limit=$(echo "$opts" | sed -n 's/.*-d \([^ ]*\).*/\1/p')
-  find_opts="$find_opts -newermt $date_limit"
 
-  # Execute the du command and store its output into an array
-  mapfile -t array < <(du --time "$dir")
+elif [[ "$opts" == *"-d "* ]]; then
+  # Extracting date argument
+  while [[ "$#" -gt 0 ]]; do
+      case $1 in
+          -d) date_argument="$2"; shift ;;
+      esac
+      shift
+  done
+
+  # Convert "Sep 10 10:00" format to "YYYY-MM-DD HH:MM"
+  converted_date=$(date -d "$date_argument" "+%Y-%m-%d %H:%M")
+
+  # Use the converted date with find -newermt to filter files
+  mapfile -t array < <(find . -type f -newermt "$converted_date" -exec du {} \;)
+
+
+
+  if [[ "$opts" == *"-l "* ]]; then
+    nlines=$(echo "$opts" | sed -n 's/.*-l \([^ ]*\).*/\1/p')
+  else
+    nlines=${#array[@]}
+  fi
 
   print_array array 0 "$nlines"
 
 elif [[ "$opts" == *"-s "* ]]; then
   size_limit=$(echo "$opts" | sed -n 's/.*-s \([^ ]*\).*/\1/p')
   find_opts="$find_opts -size +${size_limit}c"
+
+
+
+
+
 
 else
   # Execute the du command and store its output into an array
