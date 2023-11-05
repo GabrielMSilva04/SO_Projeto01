@@ -69,11 +69,15 @@ elif [[ "$opts" == *"-d "* ]]; then #mostrar dicheiros mdificados depois da data
 
 elif [[ "$opts" == *"-s "* ]]; then
   size_limit=$(echo "$opts" | sed -n 's/.*-s \([^ ]*\).*/\1/p')
-  find_opts="$find_opts -size +${size_limit}c"
+  #find_opts="$find_opts -size +${size_limit}c"
+
+  
+  mapfile -t directories < <(find "$dir" -type d -exec du -s {} + | awk -v size="$size_limit" '$1 > size {print}')
 
 
+  mapfile -t sorted_directories < <(printf "%s\n" "${directories[@]}" | $sort_cmd)
 
-
+  print_array sorted_directories
 
 
 else
