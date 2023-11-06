@@ -12,14 +12,14 @@ print_array() {
   local -n arr=$1  # Using a nameref to reference the array
 
   if [[ "$opts" == *"-l "* ]]; then
-      nlines=$(echo "$opts" | sed -n 's/.*-l \([^ ]*\).*/\1/p')
+    nlines=$(echo "$opts" | sed -n 's/.*-l \([^ ]*\).*/\1/p')
   else
-      nlines=${#arr[@]}
+    nlines=${#arr[@]}
   fi
-  echo "SIZE NAME $(date +%Y%m%d) $*"
+  echo "SIZE NAME $(date +%Y%m%d) $opts"
   for (( i = 0; i < nlines && i < ${#arr[@]}; i++ )); do
     trimmed_element=$(echo "${arr[i]}" | xargs)  # Trimming leading and trailing whitespace
-      echo "$trimmed_element"
+    echo "$trimmed_element"
   done
 }
 
@@ -43,8 +43,8 @@ if [[ "$opts" == *"-n "* ]]; then # n = filtrar nome
   # Find directories containing files with a specific name pattern
   mapfile -t directories < <(find "$dir" -type f -name "$name_pattern" -exec dirname {} \; | sort -u)
   if [[ ${#directories[@]} -eq 0 ]]; then
-      echo "No files found matching the pattern '$name_pattern'"
-      exit 1
+    echo "No files found matching the pattern '$name_pattern'"
+    exit 1
   else
     mapfile -t array < <(du "${directories[@]}" | $sort_cmd)
   fi
@@ -54,10 +54,10 @@ if [[ "$opts" == *"-n "* ]]; then # n = filtrar nome
 elif [[ "$opts" == *"-d "* ]]; then #mostrar dicheiros mdificados depois da data
   # Extracting date argument
   while [[ "$#" -gt 0 ]]; do
-      case $1 in
-          -d) date_argument="$2"; shift ;;
-      esac
-      shift
+    case $1 in
+      -d) date_argument="$2"; shift ;;
+    esac
+    shift
   done
 
   # Convert "Sep 10 10:00" format to "YYYY-MM-DD HH:MM"
@@ -65,9 +65,12 @@ elif [[ "$opts" == *"-d "* ]]; then #mostrar dicheiros mdificados depois da data
 
   # Use the converted date with find -newermt to filter files
   mapfile -t array < <(find . -type f -newermt "$converted_date" -exec du {} \; | $sort_cmd)
-
-
-  print_array array
+  if [[ ${#array[@]} -eq 0 ]]; then
+    echo "No files found modified after '$date_argument'"
+    exit 1
+  else
+    print_array array
+  fi
 
 elif [[ "$opts" == *"-s "* ]]; then
   size_limit=$(echo "$opts" | sed -n 's/.*-s \([^ ]*\).*/\1/p')
