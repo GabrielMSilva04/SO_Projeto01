@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Função para calcular o espaço ocupado pelos ficheiros 
-dir=${@: -1}
-opts="$*"
+dir="${@: -1}"
+opts=$*
 find_opts=""
 sort_cmd="sort -nr"
 
@@ -16,7 +16,7 @@ print_array() {
   else
       nlines=${#arr[@]}
   fi
-  
+  echo "SIZE NAME $(date +%Y%m%d) $*"
   for (( i = 0; i < nlines && i < ${#arr[@]}; i++ )); do
     trimmed_element=$(echo "${arr[i]}" | xargs)  # Trimming leading and trailing whitespace
       echo "$trimmed_element"
@@ -36,18 +36,20 @@ if [[ "$opts" == *"-ra "* ]]; then
   sort_cmd="sort -r"
 fi
 
-echo "SIZE    NAME $(date +%Y%m%d) $*"
-
 if [[ "$opts" == *"-n "* ]]; then # n = filtrar nome
   name_pattern=$(echo "$opts" | sed -n 's/.*-n \([^ ]*\).*/\1/p')
-  find_opts="$find_opts -name $name_pattern"
+  #find_opts="$find_opts -name $name_pattern"
 
   # Find directories containing files with a specific name pattern
-  mapfile -t directories < <(find "$dir" -type f -name "*$name_pattern" -exec dirname {} \; | sort -u)
-  mapfile -t array < <(du "${directories[@]}" | $sort_cmd)
+  mapfile -t directories < <(find "$dir" -type f -name "$name_pattern" -exec dirname {} \; | sort -u)
+  if [[ ${#directories[@]} -eq 0 ]]; then
+      echo "No files found matching the pattern '$name_pattern'"
+      exit 1
+  else
+    mapfile -t array < <(du "${directories[@]}" | $sort_cmd)
+  fi
 
   print_array array
-
 
 elif [[ "$opts" == *"-d "* ]]; then #mostrar dicheiros mdificados depois da data
   # Extracting date argument
