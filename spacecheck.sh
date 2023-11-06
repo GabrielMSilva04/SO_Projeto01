@@ -37,16 +37,16 @@ if [[ "$opts" == *"-ra "* ]]; then
 fi
 
 if [[ "$opts" == *"-n "* ]]; then # n = filtrar nome
-  name_pattern=$(echo "$opts" | sed -n 's/.*-n \([^ ]*\).*/\1/p')
+  regex_pattern=$(echo "$opts" | sed -n 's/.*-n \([^ ]*\).*/\1/p')
   #find_opts="$find_opts -name $name_pattern"
 
   # Find directories containing files with a specific name pattern
-  mapfile -t directories < <(find "$dir" -type f -name "$name_pattern" -exec dirname {} \; | sort -u)
+  mapfile -t directories < <(find "$dir" -type f -regex "$regex_pattern" -exec dirname {} \; | sort -u)
   if [[ ${#directories[@]} -eq 0 ]]; then
     echo "No files found matching the pattern '$name_pattern'"
     exit 1
   else
-    mapfile -t array < <(du "${directories[@]}" | $sort_cmd)
+    mapfile -t array < <(du -b "${directories[@]}" | $sort_cmd)
   fi
 
   print_array array
@@ -64,7 +64,7 @@ elif [[ "$opts" == *"-d "* ]]; then #mostrar dicheiros mdificados depois da data
   converted_date=$(date -d "$date_argument" "+%Y-%m-%d %H:%M")
 
   # Use the converted date with find -newermt to filter files
-  mapfile -t array < <(find . -type f -newermt "$converted_date" -exec du {} \; | $sort_cmd)
+  mapfile -t array < <(find . -type f -newermt "$converted_date" -exec du -b {} \; | $sort_cmd)
   if [[ ${#array[@]} -eq 0 ]]; then
     echo "No files found modified after '$date_argument'"
     exit 1
@@ -73,23 +73,25 @@ elif [[ "$opts" == *"-d "* ]]; then #mostrar dicheiros mdificados depois da data
   fi
 
 elif [[ "$opts" == *"-s "* ]]; then
-  size_limit=$(echo "$opts" | sed -n 's/.*-s \([^ ]*\).*/\1/p')
-  #find_opts="$find_opts -size +${size_limit}c"
-
+  size_min=$(echo "$opts" | sed -n 's/.*-s \([^ ]*\).*/\1/p')
   
+  mapfile -t directories < <(find "$dir" -type d)
   
-  mapfile -t directories < <(find "$dir" -type f -size +"${size_limit}"c -exec dirname {} \; | sort -u)
-  
-
   mapfile -t directory_sizes < <(
     for d in "${directories[@]}"; do
-      
-      du -s "$d" 2>/dev/null
+      sum=0
+      mapfile -t filtered_list < <(find "$d" -size +"$size_min"c )
+      if [[ ${#filtered_list[@]} -gt 0 ]]; then
+        for e in "${filtered_list[@]}"; do
+          space=$(du -s -b "$e" | cut -f1)
+          sum=$(($sum + $space))
+        done
+      fi
+      echo "$sum $d"
     done | sort -u
   )
 
-  
-  mapfile -t sorted_directory_sizes < <(printf "%s\n" "${directory_sizes[@]}" | awk -v size="$size_limit" '$1 >= size' | $sort_cmd)
+  mapfile -t sorted_directory_sizes < <(printf "%s\n" "${directory_sizes[@]}" | $sort_cmd)
 
   
   print_array sorted_directory_sizes
@@ -97,7 +99,7 @@ elif [[ "$opts" == *"-s "* ]]; then
 
 else
   # Execute the du command and store its output into an array
-  mapfile -t array < <(du "$dir" | $sort_cmd)
+  mapfile -t array < <(du -b "$dir" | $sort_cmd)
 
   print_array array
 fi
