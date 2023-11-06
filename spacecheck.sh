@@ -77,12 +77,22 @@ elif [[ "$opts" == *"-s "* ]]; then
   #find_opts="$find_opts -size +${size_limit}c"
 
   
-  mapfile -t directories < <(find "$dir" -type d -exec du -s {} + | awk -v size="$size_limit" '$1 > size {print}')
+  
+  mapfile -t directories < <(find "$dir" -type f -size +"${size_limit}"c -exec dirname {} \; | sort -u)
+  
 
+  mapfile -t directory_sizes < <(
+    for d in "${directories[@]}"; do
+      
+      du -s "$d" 2>/dev/null
+    done | sort -u
+  )
 
-  mapfile -t sorted_directories < <(printf "%s\n" "${directories[@]}" | $sort_cmd)
+  
+  mapfile -t sorted_directory_sizes < <(printf "%s\n" "${directory_sizes[@]}" | awk -v size="$size_limit" '$1 >= size' | $sort_cmd)
 
-  print_array sorted_directories
+  
+  print_array sorted_directory_sizes
 
 
 else
