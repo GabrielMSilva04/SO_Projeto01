@@ -4,6 +4,7 @@
 dir="${@: -1}"
 opts=$*
 sort_cmd="sort -nr"
+find_opts=""
 
 # Function to print array elements based on start and end indices
 print_array() {
@@ -35,42 +36,48 @@ if [[ "$opts" == *"-ra "* ]]; then
   sort_cmd="sort -r"
 fi
 
-if [[ "$opts" == *"-n "* ]]; then # n = filtrar nome
-  regex_pattern=$(echo "$opts" | sed -n 's/.*-n \([^ ]*\).*/\1/p')
-  
+
+if [[ "$opts" == *"-n "* ]] || [[ "$opts" == *"-d "* ]]; then #|| quando estiver pronto
+  find_cmd="find \"$dir\" -type f"
+  if [[ "$opts" == *"-d "* ]]; then
+    # Extracting date argument
+    while [[ "$#" -gt 0 ]]; do
+      case $1 in
+        -d) date_argument="$2"; shift ;;
+      esac
+      shift
+    done
+
+    # Convert "Sep 10 10:00" format to "YYYY-MM-DD HH:MM"
+    converted_date=$(date -d "$date_argument" "+%Y-%m-%d %H:%M")
+    find_opts="$find_opts -newermt \"$converted_date\""
+  fi 
+
+  if [[ "$opts" == *"-n "* ]]; then
+    regex_pattern=$(echo "$opts" | sed -n 's/.*-n \([^ ]*\).*/\1/p')
+    find_opts="$find_opts -regex $regex_pattern"
+  fi
+
   # Find directories containing files with a specific name pattern
-  mapfile -t directories < <(find "$dir" -type f -regex "$regex_pattern" -exec dirname {} \; | sort -u)
+  # Use the converted date with find -newermt to filter files
+  if [[ -n "$find_opts" ]]; then
+    find_cmd+=" $find_opts"
+  fi
+  find_cmd+=" -exec dirname {} \; | sort -u"
+
+  mapfile -t directories < <(eval "$find_cmd")
+
   if [[ ${#directories[@]} -eq 0 ]]; then
-    echo "No files found matching the pattern '$regex_pattern'"
+    echo "No files found"
     exit 1
   else
     mapfile -t array < <(du -b "${directories[@]}" | $sort_cmd)
-  fi
-
-  print_array array
-
-elif [[ "$opts" == *"-d "* ]]; then #mostrar dicheiros mdificados depois da data
-  # Extracting date argument
-  while [[ "$#" -gt 0 ]]; do
-    case $1 in
-      -d) date_argument="$2"; shift ;;
-    esac
-    shift
-  done
-
-  # Convert "Sep 10 10:00" format to "YYYY-MM-DD HH:MM"
-  converted_date=$(date -d "$date_argument" "+%Y-%m-%d %H:%M")
-
-  # Use the converted date with find -newermt to filter files
-  mapfile -t array < <(find . -type f -newermt "$converted_date" -exec du -b {} \; | $sort_cmd)
-  if [[ ${#array[@]} -eq 0 ]]; then
-    echo "No files found modified after '$date_argument'"
-    exit 1
-  else
     print_array array
   fi
+fi
 
-elif [[ "$opts" == *"-s "* ]]; then
+
+if [[ "$opts" == *"-s "* ]]; then
   size_min=$(echo "$opts" | sed -n 's/.*-s \([^ ]*\).*/\1/p')
   
   mapfile -t directories < <(find "$dir" -type d)
@@ -91,11 +98,9 @@ elif [[ "$opts" == *"-s "* ]]; then
 
   mapfile -t sorted_directory_sizes < <(printf "%s\n" "${directory_sizes[@]}" | $sort_cmd)
 
-  
-  print_array sorted_directory_sizes
-
-
-else
+  #print_array sorted_directory_sizes
+fi
+if [[ "$opts" != *"-n "* ]] && [[ "$opts" != *"-d "* ]] && [[ "$opts" != *"-s "* ]]; then
   # Execute the du command and store its output into an array
   mapfile -t array < <(du -b "$dir" | $sort_cmd)
 
