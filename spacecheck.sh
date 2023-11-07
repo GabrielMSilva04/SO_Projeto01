@@ -3,7 +3,6 @@
 # Função para calcular o espaço ocupado pelos ficheiros 
 dir="${@: -1}"
 opts=$*
-find_opts=""
 sort_cmd="sort -nr"
 
 # Function to print array elements based on start and end indices
@@ -38,12 +37,11 @@ fi
 
 if [[ "$opts" == *"-n "* ]]; then # n = filtrar nome
   regex_pattern=$(echo "$opts" | sed -n 's/.*-n \([^ ]*\).*/\1/p')
-  #find_opts="$find_opts -name $name_pattern"
-
+  
   # Find directories containing files with a specific name pattern
   mapfile -t directories < <(find "$dir" -type f -regex "$regex_pattern" -exec dirname {} \; | sort -u)
   if [[ ${#directories[@]} -eq 0 ]]; then
-    echo "No files found matching the pattern '$name_pattern'"
+    echo "No files found matching the pattern '$regex_pattern'"
     exit 1
   else
     mapfile -t array < <(du -b "${directories[@]}" | $sort_cmd)
@@ -84,7 +82,7 @@ elif [[ "$opts" == *"-s "* ]]; then
       if [[ ${#filtered_list[@]} -gt 0 ]]; then
         for e in "${filtered_list[@]}"; do
           space=$(du -s -b "$e" | cut -f1)
-          sum=$(($sum + $space))
+          sum=$((sum + space))
         done
       fi
       echo "$sum $d"
