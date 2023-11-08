@@ -37,8 +37,14 @@ if [[ "$opts" == *"-ra "* ]]; then
 fi
 
 
-if [[ "$opts" == *"-n "* ]] || [[ "$opts" == *"-d "* ]]; then #|| quando estiver pronto
+if [[ "$opts" == *"-n "* ]] || [[ "$opts" == *"-d "* ]] || [[ "$opts" == *"-s "* ]]; then #|| quando estiver pronto
   find_cmd="find \"$dir\" -type f"
+  
+  if [[ "$opts" == *"-n "* ]]; then
+    regex_pattern=$(echo "$opts" | sed -n 's/.*-n \([^ ]*\).*/\1/p')
+    find_opts="$find_opts -regex $regex_pattern"
+  fi
+
   if [[ "$opts" == *"-d "* ]]; then
     # Extracting date argument
     while [[ "$#" -gt 0 ]]; do
@@ -51,11 +57,6 @@ if [[ "$opts" == *"-n "* ]] || [[ "$opts" == *"-d "* ]]; then #|| quando estiver
     # Convert "Sep 10 10:00" format to "YYYY-MM-DD HH:MM"
     converted_date=$(date -d "$date_argument" "+%Y-%m-%d %H:%M")
     find_opts="$find_opts -newermt \"$converted_date\""
-  fi 
-
-  if [[ "$opts" == *"-n "* ]]; then
-    regex_pattern=$(echo "$opts" | sed -n 's/.*-n \([^ ]*\).*/\1/p')
-    find_opts="$find_opts -regex $regex_pattern"
   fi
 
   # Find directories containing files with a specific name pattern
@@ -65,42 +66,34 @@ if [[ "$opts" == *"-n "* ]] || [[ "$opts" == *"-d "* ]]; then #|| quando estiver
   fi
   find_cmd+=" -exec dirname {} \; | sort -u"
 
-  mapfile -t directories < <(eval "$find_cmd")
+  mapfile -t directories < <(eval "$find_cmd") #dá sort na lista de diretorios
 
   if [[ ${#directories[@]} -eq 0 ]]; then
-    echo "No files found"
-    exit 1
+      echo "No files found"
+      exit 1
   else
-    mapfile -t array < <(du -b "${directories[@]}" | $sort_cmd)
-    print_array array
-  fi
-fi
-
-
-if [[ "$opts" == *"-s "* ]]; then
-  size_min=$(echo "$opts" | sed -n 's/.*-s \([^ ]*\).*/\1/p')
-  
-  mapfile -t directories < <(find "$dir" -type d)
-  
-  mapfile -t directory_sizes < <(
-    for d in "${directories[@]}"; do
-      sum=0
-      mapfile -t filtered_list < <(find "$d" -size +"$size_min"c )
-      if [[ ${#filtered_list[@]} -gt 0 ]]; then
-        for e in "${filtered_list[@]}"; do
-          space=$(du -s -b "$e" | cut -f1)
-          sum=$((sum + space))
-        done
+      if [[ "$opts" == *"-s "* ]]; then
+        size_min=$(echo "$opts" | sed -n 's/.*-s \([^ ]*\).*/\1/p')
+        mapfile -t directories_size < <(
+          for d in "${directories[@]}"; do
+            sum=0
+            mapfile -t filtered_list < <(find "$d" -size +"$size_min"c )
+            if [[ ${#filtered_list[@]} -gt 0 ]]; then
+              for e in "${filtered_list[@]}"; do
+                space=$(du -s -b "$e" | cut -f1)
+                sum=$((sum + space))
+              done
+            fi
+            echo "$sum $d"
+          done | sort -u
+        )
+        mapfile -t array < <(printf "%s\n" "${directories_size[@]}" | $sort_cmd)
+      else
+        mapfile -t array < <(du -b "${directories[@]}" | $sort_cmd)
       fi
-      echo "$sum $d"
-    done | sort -u
-  )
-
-  mapfile -t sorted_directory_sizes < <(printf "%s\n" "${directory_sizes[@]}" | $sort_cmd)
-
-  #print_array sorted_directory_sizes
-fi
-if [[ "$opts" != *"-n "* ]] && [[ "$opts" != *"-d "* ]] && [[ "$opts" != *"-s "* ]]; then
+      print_array array
+  fi
+else
   # Execute the du command and store its output into an array
   mapfile -t array < <(du -b "$dir" | $sort_cmd)
 
