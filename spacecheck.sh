@@ -4,7 +4,16 @@
 dir="${@: -1}"
 opts=$*
 sort_cmd="sort -nr"
-find_opts=""
+
+if [[ "$opts" == *"-r "* ]]; then
+  sort_cmd="sort -n"
+
+elif [[ "$opts" == *"-a "* ]]; then
+  sort_cmd="sort -t '/' -k2,2"
+
+elif [[ "$opts" == *"-ra "* ]]; then
+  sort_cmd="sort -r -t '/' -k2,2"
+fi
 
 # Function to print array elements based on start and end indices
 print_array() {
@@ -22,24 +31,10 @@ print_array() {
     echo "$trimmed_element"
   done
 }
-
-
-if [[ "$opts" == *"-r "* ]]; then
-  sort_cmd="sort -n"
-
-elif [[ "$opts" == *"-a "* ]]; then
-  sort_cmd="sort -t '/' -k2,2"
-
-elif [[ "$opts" == *"-ra "* ]]; then
-  sort_cmd="sort -r -t '/' -k2,2"
-fi
-
-
-find_cmd="find \"$dir\" -type d"
   
 if [[ "$opts" == *"-n "* ]]; then
   regex_pattern=$(echo "$opts" | sed -n 's/.*-n \([^ ]*\).*/\1/p')
-  find_opts="$find_opts -regex $regex_pattern"
+  name_opt="-regex $regex_pattern"
 fi
 
 if [[ "$opts" == *"-d "* ]]; then
@@ -53,7 +48,6 @@ if [[ "$opts" == *"-d "* ]]; then
 
   # Convert "Sep 10 10:00" format to "YYYY-MM-DD HH:MM"
   converted_date=$(date -d "$date_argument" "+%Y-%m-%d %H:%M")
-  find_opts="$find_opts -newermt \"$converted_date\""
 fi
 
 if [[ "$opts" == *"-s "* ]]; then
@@ -63,12 +57,7 @@ fi
 
 # Find directories containing files with a specific name pattern
 # Use the converted date with find -newermt to filter files
-if [[ -n "$find_opts" ]]; then
-  find_cmd+=" $find_opts"
-fi
-find_cmd+=" | sort -u"
-
-mapfile -t directories < <(eval "$find_cmd") #filta a lista de diretorios
+mapfile -t directories < <(find "$dir" -type d | sort -u) #filta a lista de diretorios
 
 if [[ ${#directories[@]} -eq 0 ]]; then
   echo "No files found"
@@ -78,8 +67,12 @@ else
   mapfile -t directories_size < <(
     for d in "${directories[@]}"; do
       sum=0
-      mapfile -t filtered_list < <(find "$d" -type f ${size_opt:+$size_opt} | sort -u)
-      #echo ${#filtered_list[@]}
+      if [[ "$opts" == *"-d "* ]]; then
+        mapfile -t filtered_list < <(find "$d" -type f ${name_opt:+$name_opt} -newermt "$converted_date" ${size_opt:+$size_opt} | sort -u)
+      else
+        mapfile -t filtered_list < <(find "$d" -type f ${name_opt:+$name_opt} ${size_opt:+$size_opt} | sort -u)
+      fi
+      
       if [[ ${#filtered_list[@]} -gt 0 ]]; then
         for e in "${filtered_list[@]}"; do
           space=$(du -s -b "$e" | cut -f1)
