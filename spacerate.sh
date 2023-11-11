@@ -78,10 +78,13 @@ fi
 
 #print_array lines2 | cut -d ' ' -f 1 #numeros
 
+
 for (( i = 0; i < ${#lines1[@]}; i++ )); do
   for (( j = 0; j < ${#lines2[@]}; j++ )); do
     if [ "$(echo "${lines1[i]}" | cut -d ' ' -f 2-)" = "$(echo "${lines2[j]}" | cut -d ' ' -f 2-)" ]; then
-      echo "$(echo "${lines1[i]}" | cut -d ' ' -f 1) $(echo "${lines2[j]}" | cut -d ' ' -f 1) $(echo "${lines1[i]}" | cut -d ' ' -f 2-)"
+      size1=$(echo "${lines1[i]}" | cut -d ' ' -f 1)
+      size2=$(echo "${lines2[j]}" | cut -d ' ' -f 1)
+      echo "$((size1 - size2)) $(echo "${lines1[i]}" | cut -d ' ' -f 2-)"
       break
     fi
   done
