@@ -1,8 +1,8 @@
 #!/bin/bash
 
 files=${@: -2}
-file1=${@: -2:1}
-file2=${@: -1}
+filenew=${@: -2:1}
+fileold=${@: -1}
 opts=$*
 
 print_array() {
@@ -43,8 +43,8 @@ fi
 
 
 # Check if the file exists
-if [ -f "$file1" ] && [ -f "$file2" ]; then
-  mapfile -t lines1 < <(
+if [ -f "$fileold" ] && [ -f "$filenew" ]; then
+  mapfile -t linesold < <(
     # Read the file line by line
     firstLine=true
     while IFS= read -r line
@@ -54,11 +54,11 @@ if [ -f "$file1" ] && [ -f "$file2" ]; then
         continue  # Skips the first line
         fi
         echo "$line"
-    done < "$file1"
+    done < "$fileold"
   )
   
 
-  mapfile -t lines2 < <(
+  mapfile -t linesnew < <(
     # Read the file line by line
     firstLine=true
     while IFS= read -r line
@@ -67,38 +67,47 @@ if [ -f "$file1" ] && [ -f "$file2" ]; then
         firstLine=false
         continue  # Skips the first line
         fi
+        #if [ echo "$line" | cut -d ' ' -f 1 != "0" ]; then
+        #  continue
+        #fi
         echo "$line"
-    done < "$file2"
+    done < "$filenew"
   )
 fi
 
-#print_array lines1
+#print_array linesold
 #echo "--------------------------------------------------"
-#print_array lines2
+#print_array linesnew
 
-#print_array lines2 | cut -d ' ' -f 1 #numeros
+#print_array linesnew | cut -d ' ' -f 1 #numeros
 
 
-for (( i = 0; i < ${#lines1[@]}; i++ )); do
+for (( i = 0; i < ${#linesold[@]}; i++ )); do
   found=false
-  for (( j = 0; j < ${#lines2[@]}; j++ )); do
-    if [ "$(echo "${lines1[i]}" | cut -d ' ' -f 2-)" = "$(echo "${lines2[j]}" | cut -d ' ' -f 2-)" ]; then
+  for (( j = 0; j < ${#linesnew[@]}; j++ )); do
+    if [ "$(echo "${linesold[i]}" | cut -d ' ' -f 2-)" = "$(echo "${linesnew[j]}" | cut -d ' ' -f 2-)" ]; then
       found=true
-      size1=$(echo "${lines1[i]}" | cut -d ' ' -f 1)
-      size2=$(echo "${lines2[j]}" | cut -d ' ' -f 1)
+      sizeold=$(echo "${linesold[i]}" | cut -d ' ' -f 1)
+      sizenew=$(echo "${linesnew[j]}" | cut -d ' ' -f 1)
+      unset 'linesnew[j]' #remove a linha do array para não ser comparada novamente
       break
     fi
   done
   
-  if [ "$found" = "true" ]; then
-    echo "$((size1 - size2)) $(echo "${lines1[i]}" | cut -d ' ' -f 2-)"
+  if [ "$found" = "true" ]; then #se a linha foi encontrada
+    echo "$((sizeold - sizenew)) $(echo "${linesold[i]}" | cut -d ' ' -f 2-)"
   elif [ "$found" = "false" ]; then
-    size1=$(echo "${lines1[i]}" | cut -d ' ' -f 1)
-    #echo ${lines1[i]}
-    echo "-$size1 $(echo "${lines1[i]}" | cut -d ' ' -f 2-) REMOVED"
+    sizeold=$(echo "${linesold[i]}" | cut -d ' ' -f 1)
+    echo "$((0 - sizeold)) $(echo "${linesold[i]}" | cut -d ' ' -f 2-) REMOVED"
   fi
 done
 
-#print_array lines1 | cut -d ' ' -f 2 #nomes
+for (( i = 0; i < ${#linesnew[@]}; i++ )); do
+  if [ -n "${linesnew[i]}" ]; then
+    sizenew=$(echo "${linesnew[i]}" | cut -d ' ' -f 1)
+    echo "$sizenew $(echo "${linesnew[i]}" | cut -d ' ' -f 2-) NEW"
+  fi
+done
+#print_array linesold | cut -d ' ' -f 2 #nomes
 #echo "--------------------------------------------------"
-#print_array lines2 | cut -d ' ' -f 2 #nomes
+#print_array linesnew | cut -d ' ' -f 2 #nomes
