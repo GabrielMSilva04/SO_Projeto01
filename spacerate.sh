@@ -80,14 +80,23 @@ fi
 
 
 for (( i = 0; i < ${#lines1[@]}; i++ )); do
+  found=false
   for (( j = 0; j < ${#lines2[@]}; j++ )); do
     if [ "$(echo "${lines1[i]}" | cut -d ' ' -f 2-)" = "$(echo "${lines2[j]}" | cut -d ' ' -f 2-)" ]; then
+      found=true
       size1=$(echo "${lines1[i]}" | cut -d ' ' -f 1)
       size2=$(echo "${lines2[j]}" | cut -d ' ' -f 1)
-      echo "$((size1 - size2)) $(echo "${lines1[i]}" | cut -d ' ' -f 2-)"
       break
     fi
   done
+  
+  if [ "$found" = "true" ]; then
+    echo "$((size1 - size2)) $(echo "${lines1[i]}" | cut -d ' ' -f 2-)"
+  elif [ "$found" = "false" ]; then
+    size1=$(echo "${lines1[i]}" | cut -d ' ' -f 1)
+    #echo ${lines1[i]}
+    echo "-$size1 $(echo "${lines1[i]}" | cut -d ' ' -f 2-) REMOVED"
+  fi
 done
 
 #print_array lines1 | cut -d ' ' -f 2 #nomes
