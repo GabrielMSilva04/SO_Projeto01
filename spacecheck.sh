@@ -67,7 +67,7 @@ else
     for d in "${directories[@]}"; do
       sum=0
       if [[ "$opts" == *"-d "* ]]; then
-        mapfile -t filtered_list < <(find "$d" -type f ${name_opt:+$name_opt} -newermt "$converted_date" ${size_opt:+$size_opt} 2>/dev/null | sort -u)
+        mapfile -t filtered_list < <(find "$d" -type f ${name_opt:+$name_opt} -not -newermt "$converted_date" ${size_opt:+$size_opt} 2>/dev/null | sort -u)
       else
         mapfile -t filtered_list < <(find "$d" -type f ${name_opt:+$name_opt} ${size_opt:+$size_opt} 2>/dev/null | sort -u)
       fi

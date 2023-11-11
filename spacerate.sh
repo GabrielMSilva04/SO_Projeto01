@@ -1,6 +1,5 @@
 #!/bin/bash
 
-files=${@: -2}
 filenew=${@: -2:1}
 fileold=${@: -1}
 opts=$*
@@ -58,9 +57,6 @@ if [ -f "$fileold" ] && [ -f "$filenew" ]; then # Check if the file exists
         firstLine=false
         continue  # Skips the first line
         fi
-        #if [ echo "$line" | cut -d ' ' -f 1 != "0" ]; then
-        #  continue
-        #fi
         echo "$line"
     done < "$filenew"
   )
