@@ -14,36 +14,27 @@ print_array() {
   else
     nlines=${#arr[@]}
   fi
-  echo "SIZE NAME"
   for (( i = 0; i < nlines && i < ${#arr[@]}; i++ )); do
     trimmed_element=$(echo "${arr[i]}" | xargs)  # Trimming leading and trailing whitespace
     echo "$trimmed_element"
   done
 }
 
-#comandos spacecheck.sh
-#./spacecheck.sh -d "Oct 1 00:00" -n ".*mlx" "/home/gabriel-silva/Insync/gabrielmsilva4@ua.pt/OneDrive Biz" > ./output1
-
-#./spacecheck.sh -d "Oct 20 00:00" -n ".*mlx" "/home/gabriel-silva/Insync/gabrielmsilva4@ua.pt/OneDrive Biz" > ./output2
-
-# Função para calcular o espaço ocupado pelos ficheiros
 sort_cmd="sort -nr"
 
 if [[ "$opts" == *"-r "* ]]; then
   sort_cmd="sort -n"
+
+elif [[ "$opts" == *"-a "* ]]; then
+  sort_cmd="sort -t '/' -k2,2"
+
+elif [[ "$opts" == *"-ra "* ]]; then
+  sort_cmd="sort -r -t '/' -k2,2"
 fi
 
-if [[ "$opts" == *"-a "* ]]; then
-  sort_cmd="sort"
-fi
 
-if [[ "$opts" == *"-ra "* ]]; then
-  sort_cmd="sort -r"
-fi
-
-
-# Check if the file exists
-if [ -f "$fileold" ] && [ -f "$filenew" ]; then
+#ler os ficheiros
+if [ -f "$fileold" ] && [ -f "$filenew" ]; then # Check if the file exists
   mapfile -t linesold < <(
     # Read the file line by line
     firstLine=true
@@ -75,39 +66,35 @@ if [ -f "$fileold" ] && [ -f "$filenew" ]; then
   )
 fi
 
-#print_array linesold
-#echo "--------------------------------------------------"
-#print_array linesnew
 
-#print_array linesnew | cut -d ' ' -f 1 #numeros
-
-
-for (( i = 0; i < ${#linesold[@]}; i++ )); do
-  found=false
-  for (( j = 0; j < ${#linesnew[@]}; j++ )); do
-    if [ "$(echo "${linesold[i]}" | cut -d ' ' -f 2-)" = "$(echo "${linesnew[j]}" | cut -d ' ' -f 2-)" ]; then
-      found=true
+mapfile -t array < <( 
+  for (( i = 0; i < ${#linesold[@]}; i++ )); do
+    found=false
+    for (( j = 0; j < ${#linesnew[@]}; j++ )); do
+      if [ "$(echo "${linesold[i]}" | cut -d ' ' -f 2-)" = "$(echo "${linesnew[j]}" | cut -d ' ' -f 2-)" ]; then
+        found=true
+        sizeold=$(echo "${linesold[i]}" | cut -d ' ' -f 1)
+        sizenew=$(echo "${linesnew[j]}" | cut -d ' ' -f 1)
+        unset 'linesnew[j]' #remove a linha do array para não ser comparada novamente
+        break
+      fi
+    done
+    
+    if [ "$found" = "true" ]; then #se a linha foi encontrada
+      echo "$((sizeold - sizenew)) $(echo "${linesold[i]}" | cut -d ' ' -f 2-)"
+    elif [ "$found" = "false" ]; then
       sizeold=$(echo "${linesold[i]}" | cut -d ' ' -f 1)
-      sizenew=$(echo "${linesnew[j]}" | cut -d ' ' -f 1)
-      unset 'linesnew[j]' #remove a linha do array para não ser comparada novamente
-      break
+      echo "$((0 - sizeold)) $(echo "${linesold[i]}" | cut -d ' ' -f 2-) REMOVED"
     fi
   done
-  
-  if [ "$found" = "true" ]; then #se a linha foi encontrada
-    echo "$((sizeold - sizenew)) $(echo "${linesold[i]}" | cut -d ' ' -f 2-)"
-  elif [ "$found" = "false" ]; then
-    sizeold=$(echo "${linesold[i]}" | cut -d ' ' -f 1)
-    echo "$((0 - sizeold)) $(echo "${linesold[i]}" | cut -d ' ' -f 2-) REMOVED"
-  fi
-done
 
-for (( i = 0; i < ${#linesnew[@]}; i++ )); do
-  if [ -n "${linesnew[i]}" ]; then
-    sizenew=$(echo "${linesnew[i]}" | cut -d ' ' -f 1)
-    echo "$sizenew $(echo "${linesnew[i]}" | cut -d ' ' -f 2-) NEW"
-  fi
-done
-#print_array linesold | cut -d ' ' -f 2 #nomes
-#echo "--------------------------------------------------"
-#print_array linesnew | cut -d ' ' -f 2 #nomes
+  for (( i = 0; i < ${#linesnew[@]}; i++ )); do
+    if [ -n "${linesnew[i]}" ]; then
+      sizenew=$(echo "${linesnew[i]}" | cut -d ' ' -f 1)
+      echo "$sizenew $(echo "${linesnew[i]}" | cut -d ' ' -f 2-) NEW"
+    fi
+  done
+)
+
+echo "SIZE NAME"
+print_array array | eval "$sort_cmd"
