@@ -15,7 +15,6 @@ elif [[ "$opts" == *"-ra "* ]]; then
   sort_cmd="sort -r -t '/' -k2,2"
 fi
 
-# Function to print array elements based on start and end indices
 print_array() {
   local nlines
   local -n arr=$1  # Using a nameref to reference the array
@@ -57,7 +56,7 @@ fi
 
 # Find directories containing files with a specific name pattern
 # Use the converted date with find -newermt to filter files
-mapfile -t directories < <(find "$dir" -type d | sort -u) #filta a lista de diretorios
+mapfile -t directories < <(find "$dir" -type d 2>/dev/null | sort -u) #filta a lista de diretorios
 
 if [[ ${#directories[@]} -eq 0 ]]; then
   echo "No files found"
@@ -68,18 +67,23 @@ else
     for d in "${directories[@]}"; do
       sum=0
       if [[ "$opts" == *"-d "* ]]; then
-        mapfile -t filtered_list < <(find "$d" -type f ${name_opt:+$name_opt} -newermt "$converted_date" ${size_opt:+$size_opt} | sort -u)
+        mapfile -t filtered_list < <(find "$d" -type f ${name_opt:+$name_opt} -newermt "$converted_date" ${size_opt:+$size_opt} 2>/dev/null | sort -u)
       else
-        mapfile -t filtered_list < <(find "$d" -type f ${name_opt:+$name_opt} ${size_opt:+$size_opt} | sort -u)
+        mapfile -t filtered_list < <(find "$d" -type f ${name_opt:+$name_opt} ${size_opt:+$size_opt} 2>/dev/null | sort -u)
       fi
-      
+
       if [[ ${#filtered_list[@]} -gt 0 ]]; then
         for e in "${filtered_list[@]}"; do
+          if ! [[ -r $e ]]; then # caso nao tenha permissao de leitura
+            sum="NA"
+            break
+          fi
           space=$(du -s -b "$e" | cut -f1)
           sum=$((sum + space))
         done
       fi
       echo "$sum $d"
+      
     done | sort -u
   )
 
