@@ -1,8 +1,15 @@
 #!/bin/bash
 
-# Função para calcular o espaço ocupado pelos ficheiros 
-dir="${@: -1}"
+# Verifica se existem argumentos
+if [ $# -eq 0 ]; then
+    echo "Arguments required."
+    exit 1
+fi
+
+dir="${@: -1}" #ultima palavra
 opts=$*
+
+# sort options
 sort_cmd="sort -nr"
 
 if [[ "$opts" == *"-r "* ]]; then
@@ -17,7 +24,7 @@ fi
 
 print_array() {
   local nlines
-  local -n arr=$1  # Using a nameref to reference the array
+  local -n arr=$1  # Usa uma referência de nome para referir a matriz
 
   if [[ "$opts" == *"-l "* ]]; then
     nlines=$(echo "$opts" | sed -n 's/.*-l \([^ ]*\).*/\1/p')
@@ -26,18 +33,19 @@ print_array() {
   fi
   echo "SIZE NAME $(date +%Y%m%d) $opts"
   for (( i = 0; i < nlines && i < ${#arr[@]}; i++ )); do
-    trimmed_element=$(echo "${arr[i]}" | xargs)  # Trimming leading and trailing whitespace
+    trimmed_element=$(echo "${arr[i]}" | xargs)  # Remove whitespaces no início e no final
     echo "$trimmed_element"
   done
 }
   
+# Encontra diretórios com ficheiros com um padrão de nome específico
 if [[ "$opts" == *"-n "* ]]; then
   regex_pattern=$(echo "$opts" | sed -n 's/.*-n \([^ ]*\).*/\1/p')
   name_opt="-regex $regex_pattern"
 fi
 
 if [[ "$opts" == *"-d "* ]]; then
-  # Extracting date argument
+  # Extrai argumento de data
   while [[ "$#" -gt 0 ]]; do
     case $1 in
       -d) date_argument="$2"; shift ;;
@@ -45,17 +53,19 @@ if [[ "$opts" == *"-d "* ]]; then
     shift
   done
 
-  # Convert "Sep 10 10:00" format to "YYYY-MM-DD HH:MM"
+  # Converte o formato "Sep 10 10:00" para "YYYY-MM-DD HH:MM"
   converted_date=$(date -d "$date_argument" "+%Y-%m-%d %H:%M")
+  if [[ "$converted_date" == "" ]]; then
+    echo "Data inválida"
+    exit 1
+  fi
 fi
 
 if [[ "$opts" == *"-s "* ]]; then
   size_min=$(echo "$opts" | sed -n 's/.*-s \([^ ]*\).*/\1/p')
-  size_opt="-size +${size_min}c"
+  size_opt="-size +${size_min}c" # define a opção de tamanho mínimo
 fi
 
-# Find directories containing files with a specific name pattern
-# Use the converted date with find -newermt to filter files
 mapfile -t directories < <(find "$dir" -type d 2>/dev/null | sort -u) #filta a lista de diretorios
 
 if [[ ${#directories[@]} -eq 0 ]]; then
@@ -67,6 +77,7 @@ else
     for d in "${directories[@]}"; do
       sum=0
       if [[ "$opts" == *"-d "* ]]; then
+        # Usa a data convertida com find -not -newermt para filtrar ficheiros mais antigos
         mapfile -t filtered_list < <(find "$d" -type f ${name_opt:+$name_opt} -not -newermt "$converted_date" ${size_opt:+$size_opt} 2>/dev/null | sort -u)
       else
         mapfile -t filtered_list < <(find "$d" -type f ${name_opt:+$name_opt} ${size_opt:+$size_opt} 2>/dev/null | sort -u)
@@ -79,7 +90,7 @@ else
             break
           fi
           space=$(du -s -b "$e" | cut -f1)
-          sum=$((sum + space))
+          sum=$((sum + space)) # soma o tamanho dos ficheiros que passam no filtro
         done
       fi
       echo "$sum $d"
@@ -87,7 +98,7 @@ else
     done | sort -u
   )
 
-  # Execute the du command and store its output into an array
+  # Ordena e armazena o output num array
   if [[ ${#directories_size[@]} -gt 0 ]]; then
     if [[ "$opts" == *"-a "* ]] || [[ "$opts" == *"-ra "* ]]; then
       mapfile -t array < <(printf "%s\n" "${directories_size[@]}" | awk -F'/' '{print NF-1, $0}' | eval "$sort_cmd" | cut -d' ' -f2-)
@@ -99,5 +110,5 @@ else
     exit 1
   fi
 
-  print_array array
+  print_array array # imprime o array
 fi
