@@ -35,87 +35,71 @@ elif [[ "$opts" == *"-ra "* ]]; then
 fi
 
 
-if [[ "$opts" == *"-n "* ]] || [[ "$opts" == *"-d "* ]] || [[ "$opts" == *"-s "* ]]; then #|| quando estiver pronto
-  find_cmd="find \"$dir\" -type d"
+find_cmd="find \"$dir\" -type d"
   
-  if [[ "$opts" == *"-n "* ]]; then
-    regex_pattern=$(echo "$opts" | sed -n 's/.*-n \([^ ]*\).*/\1/p')
-    find_opts="$find_opts -regex $regex_pattern"
-  fi
+if [[ "$opts" == *"-n "* ]]; then
+  regex_pattern=$(echo "$opts" | sed -n 's/.*-n \([^ ]*\).*/\1/p')
+  find_opts="$find_opts -regex $regex_pattern"
+fi
 
-  if [[ "$opts" == *"-d "* ]]; then
-    # Extracting date argument
-    while [[ "$#" -gt 0 ]]; do
-      case $1 in
-        -d) date_argument="$2"; shift ;;
-      esac
-      shift
-    done
+if [[ "$opts" == *"-d "* ]]; then
+  # Extracting date argument
+  while [[ "$#" -gt 0 ]]; do
+    case $1 in
+      -d) date_argument="$2"; shift ;;
+    esac
+    shift
+  done
 
-    # Convert "Sep 10 10:00" format to "YYYY-MM-DD HH:MM"
-    converted_date=$(date -d "$date_argument" "+%Y-%m-%d %H:%M")
-    find_opts="$find_opts -newermt \"$converted_date\""
-  fi
+  # Convert "Sep 10 10:00" format to "YYYY-MM-DD HH:MM"
+  converted_date=$(date -d "$date_argument" "+%Y-%m-%d %H:%M")
+  find_opts="$find_opts -newermt \"$converted_date\""
+fi
 
-  # Find directories containing files with a specific name pattern
-  # Use the converted date with find -newermt to filter files
-  if [[ -n "$find_opts" ]]; then
-    find_cmd+=" $find_opts"
-  fi
-  find_cmd+=" | sort -u"
+if [[ "$opts" == *"-s "* ]]; then
+  size_min=$(echo "$opts" | sed -n 's/.*-s \([^ ]*\).*/\1/p')
+  size_opt="-size +${size_min}c"
+fi
 
-  mapfile -t directories < <(eval "$find_cmd") #filta a lista de diretorios
+# Find directories containing files with a specific name pattern
+# Use the converted date with find -newermt to filter files
+if [[ -n "$find_opts" ]]; then
+  find_cmd+=" $find_opts"
+fi
+find_cmd+=" | sort -u"
 
-  if [[ ${#directories[@]} -eq 0 ]]; then
-      echo "No files found"
-      exit 1
-  else
-      if [[ "$opts" == *"-s "* ]]; then
-        size_min=$(echo "$opts" | sed -n 's/.*-s \([^ ]*\).*/\1/p')
-        mapfile -t directories_size < <(
-          for d in "${directories[@]}"; do
-            sum=0
-            mapfile -t filtered_list < <(find "$d" -type f -size +"$size_min"c | sort -u)
-            #echo ${#filtered_list[@]}
-            if [[ ${#filtered_list[@]} -gt 0 ]]; then
-              for e in "${filtered_list[@]}"; do
-                space=$(du -s -b "$e" | cut -f1)
-                sum=$(($sum + $space))
-              done
-            fi
-            echo "$sum $d"
-          done | sort -u
-        )
-        
+mapfile -t directories < <(eval "$find_cmd") #filta a lista de diretorios
 
-        if [[ ${#directories_size[@]} -gt 0 ]]; then
-          if [[ "$opts" == *"-a "* ]] || [[ "$opts" == *"-ra "* ]]; then
-            mapfile -t array < <(printf "%s\n" "${directories_size[@]}" | awk -F'/' '{print NF-1, $0}' | eval "$sort_cmd" | cut -d' ' -f2-)
-          else
-            mapfile -t array < <(printf "%s\n" "${directories_size[@]}" | eval "$sort_cmd")
-          fi
-
-          print_array array
-        else
-          echo "No files found"
-          exit 1
-        fi
-
-      else
-        if [[ "$opts" == *"-a "* ]] || [[ "$opts" == *"-ra "* ]]; then
-          mapfile -t array < <(du -b "${directories[@]}" | awk -F'/' '{print NF-1, $0}' | eval "$sort_cmd" | cut -d' ' -f2-)
-        else
-          mapfile -t array < <(du -b "${directories[@]}" | eval "$sort_cmd")
-        fi
-      fi
-
-  fi
+if [[ ${#directories[@]} -eq 0 ]]; then
+  echo "No files found"
+  exit 1
 else
+
+  mapfile -t directories_size < <(
+    for d in "${directories[@]}"; do
+      sum=0
+      mapfile -t filtered_list < <(find "$d" -type f ${size_opt:+$size_opt} | sort -u)
+      #echo ${#filtered_list[@]}
+      if [[ ${#filtered_list[@]} -gt 0 ]]; then
+        for e in "${filtered_list[@]}"; do
+          space=$(du -s -b "$e" | cut -f1)
+          sum=$((sum + space))
+        done
+      fi
+      echo "$sum $d"
+    done | sort -u
+  )
+
   # Execute the du command and store its output into an array
-  if [[ "$opts" == *"-a "* ]] || [[ "$opts" == *"-ra "* ]]; then
-    mapfile -t array < <(du -b "$dir" | awk -F'/' '{print NF-1, $0}' | eval "$sort_cmd" | cut -d' ' -f2-)
+  if [[ ${#directories_size[@]} -gt 0 ]]; then
+    if [[ "$opts" == *"-a "* ]] || [[ "$opts" == *"-ra "* ]]; then
+      mapfile -t array < <(printf "%s\n" "${directories_size[@]}" | awk -F'/' '{print NF-1, $0}' | eval "$sort_cmd" | cut -d' ' -f2-)
+    else
+      mapfile -t array < <(printf "%s\n" "${directories_size[@]}" | eval "$sort_cmd")
+    fi
   else
-    mapfile -t array < <(du -b "$dir" | eval "$sort_cmd")
+    echo "No files found"
+    exit 1
   fi
 
   print_array array
