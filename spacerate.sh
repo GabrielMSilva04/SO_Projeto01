@@ -40,7 +40,8 @@ fi
 
 
 #ler os ficheiros
-if [ -f "$fileold" ] && [ -f "$filenew" ]; then # Check if the files exist
+if [ -f "$fileold" ] && [ -f "$filenew" ]; then 
+# Verifica se os ficheiros existem
   mapfile -t linesold < <(
     firstLine=true
     # Ler o ficheiro linha por linha
@@ -88,7 +89,7 @@ mapfile -t array < <(
     done
     
     if [ "$found" = "true" ]; then #se a linha foi encontrada
-      echo "$((sizeold - sizenew)) $(echo "${linesold[i]}" | cut -d ' ' -f 2-)"
+      echo "$((sizenew - sizeold)) $(echo "${linesold[i]}" | cut -d ' ' -f 2-)"
     elif [ "$found" = "false" ]; then #se a linha não foi encontrada (foi removida)
       sizeold=$(echo "${linesold[i]}" | cut -d ' ' -f 1)
       echo "$((0 - sizeold)) $(echo "${linesold[i]}" | cut -d ' ' -f 2-) REMOVED"

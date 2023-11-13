@@ -31,7 +31,6 @@ print_array() {
   else
     nlines=${#arr[@]}
   fi
-  echo "SIZE NAME $(date +%Y%m%d) $opts"
   for (( i = 0; i < nlines && i < ${#arr[@]}; i++ )); do
     trimmed_element=$(echo "${arr[i]}" | xargs)  # Remove whitespaces no início e no final
     echo "$trimmed_element"
@@ -67,7 +66,7 @@ if [[ "$opts" == *"-s "* ]]; then
 fi
 
 # Encontra todos os diretórios
-mapfile -t directories < <(find "$dir" -type d 2>/dev/null | sort -u) #filta a lista de diretorios
+mapfile -t directories < <(find "$dir" -type d 2>/dev/null | sort -u)
 
 if [[ ${#directories[@]} -eq 0 ]]; then
   echo "No directories found"
@@ -111,5 +110,6 @@ else
     exit 1
   fi
 
+  echo "SIZE NAME $(date +%Y%m%d) $opts"
   print_array array # imprime o array
 fi
