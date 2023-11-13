@@ -32,10 +32,10 @@ if [[ "$opts" == *"-r "* ]]; then
   sort_cmd="sort -n"
 
 elif [[ "$opts" == *"-a "* ]]; then
-  sort_cmd="sort -t '/' -k2,2"
+  sort_cmd="sort -t '/' -k2"
 
 elif [[ "$opts" == *"-ra "* ]]; then
-  sort_cmd="sort -r -t '/' -k2,2"
+  sort_cmd="sort -r -t '/' -k2"
 fi
 
 
@@ -105,4 +105,8 @@ mapfile -t array < <(
 )
 
 echo "SIZE NAME"
-print_array array | eval "$sort_cmd"
+if [[ "$opts" == *"-a "* ]] || [[ "$opts" == *"-ra "* ]]; then
+  print_array array | awk -F'/' '{print "1 " $0 " IGNORE"}' | eval "$sort_cmd" | cut -d' ' -f2- | rev | cut -d' ' -f2- | rev
+else
+  print_array array | eval "$sort_cmd"
+fi

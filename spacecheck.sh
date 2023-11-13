@@ -66,10 +66,11 @@ if [[ "$opts" == *"-s "* ]]; then
   size_opt="-size +${size_min}c" # define a opção de tamanho mínimo
 fi
 
+# Encontra todos os diretórios
 mapfile -t directories < <(find "$dir" -type d 2>/dev/null | sort -u) #filta a lista de diretorios
 
 if [[ ${#directories[@]} -eq 0 ]]; then
-  echo "No files found"
+  echo "No directories found"
   exit 1
 else
 
